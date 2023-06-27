@@ -283,8 +283,6 @@ while endAlgorithm == false && trial < maxTries
             indexPath = find(LOCB == 1);
             if(indexPath > 2)
                 path = [roadmap(connections(indexPath-2, 2), :); path];
-            else
-                break
             end
         end
         path = [path; roadmap(indexB, :)];
@@ -293,8 +291,6 @@ while endAlgorithm == false && trial < maxTries
             indexPath = find(LOCB == 1);
             if indexPath > 2
                 path = [path; roadmap(connections(indexPath-2, 2), :)];
-            else
-                break
             end
         end
         path
@@ -304,7 +300,6 @@ while endAlgorithm == false && trial < maxTries
 
     if collision_connecting_trees == true
         disp("Failure while connecting the trees, increasing the iteration number!");
-        roadmap = roadmap/res;
     end
 end
 
