@@ -5,14 +5,12 @@ clear all
 clc
 
 %load('map.mat');
-
-x_size = 20;
-y_size = 20;
-z_size = 10;
-
-map = rand(x_size,y_size, z_size);
-
-obstacle_chance = 0.05;
+res = 0.5;
+meshres = 0.1;
+mapres = 5;
+x_size = 20/res;
+y_size = 20/res;
+z_size = 10/res;
 
 % for i = 1:x_size
 %     for j = 1:y_size
@@ -38,33 +36,96 @@ for i = 1:x_size
     end
 end
 
+% Create map from occupancyMap
 
+Env3D = occupancyMap3D(mapres);
+mapW = x_size*res;
+mapL = y_size*res;
+mapH = z_size*res;
+W=2;
+L=6;
+H=2;
+xp=(mapW - W)/2;
+yp=0;
 
-q_i = [1 2 3];
-q_f = [15 15 7];
+[xo_1,yo_1,zo_1]=meshgrid(xp:meshres:xp+W, yp:meshres:mapL, 0:meshres:H);
+[xo_2,yo_2,zo_2]=meshgrid(xp:meshres:xp+W, yp:meshres:yp+L, H:meshres:(mapH - H));
+[xo_3,yo_3,zo_3]=meshgrid(xp:meshres:xp+W, (mapL-L):meshres:mapL, H:meshres:(mapH - H));
+[xo_4,yo_4,zo_4]=meshgrid(xp:meshres:xp+W, yp:meshres:mapL, (mapH-H):meshres:mapH);
+[xo_5,yo_5,zo_5]=meshgrid(2:meshres:7, 1:meshres:3, 0:meshres:5);
 
-map(q_i(1), q_i(2), q_i(3)) = 1;
-map(q_f(1), q_f(2), q_f(3)) = 1;
+r = 1;
+[xo_6, yo_6, zo_6]=cylinder(r,50);
+xo_6(:)=xo_6(:)+5;
+yo_6(:)=yo_6(:)+10;
+[xo_t, yo_t, zo_t]=[xo_6(:,2), yo_6, zo_6]
+for i= 1:meshres:mapH
+    [xo_6, yo_6, zo_6]=[(xo_6;xo_6, yo_6, zo_6]
 
-%% show map
+Obstacle_1=[xo_1(:) yo_1(:) zo_1(:)];
+Obstacle_2=[xo_2(:) yo_2(:) zo_2(:)];
+Obstacle_3=[xo_3(:) yo_3(:) zo_3(:)];
+Obstacle_4=[xo_4(:) yo_4(:) zo_4(:)];
+Obstacle_5=[xo_5(:) yo_5(:) zo_5(:)];
+Obstacle_6=[xo_6(:) yo_6(:) zo_6(:)];
 
+setOccupancy(Env3D,Obstacle_1,1)
+setOccupancy(Env3D,Obstacle_2,1)
+setOccupancy(Env3D,Obstacle_3,1)
+setOccupancy(Env3D,Obstacle_4,1)
+setOccupancy(Env3D,Obstacle_5,1)
+setOccupancy(Env3D,Obstacle_6,1)
+[xG,yG,zG] = meshgrid(0:meshres:mapW,0:meshres:mapL,0);
+Ground = [xG(:) yG(:) zG(:)];
+%inflate(Env3D,1)
+setOccupancy(Env3D,Ground,1)
 figure(1)
+show(Env3D)
+hold on 
 
+% Matrix creation
+map = zeros(x_size, y_size, z_size);
 for i = 1:x_size
     for j = 1:y_size
         for k = 1:z_size
-            if map(i, j, k) == 0
-                plot3(i, j, k, 'k.-', 'MarkerSize',30, 'LineWidth', 20);
-                hold on
+            if checkOccupancy(Env3D, [i*res, j*res, k*res]) ~= 1
+                map(i, j, k) = 1;
             end
         end
     end
 end
 
+q_i = [1/res 2/res 3/res];
+q_f = [18/res 18/res 3/res];
+
+map(q_i(1), q_i(2), q_i(3)) = 1;
+map(q_f(1), q_f(2), q_f(3)) = 1;
+
+
+
+
+%% show map
+% 
+% D = gpuDevice;
+% figure(1)
+% plot_map = gpuArray(map);
+% for i = 1:x_size
+%     for j = 1:y_size
+%         for k = 1:z_size
+%             if plot_map(i, j, k) == 0
+%                 plot3(i, j, k, 'k.-', 'MarkerSize',30, 'LineWidth', 20);
+%                 hold on
+%             end
+%         end
+%     end
+% end
+% reset(D)
+% clear plot_map
+
 %% DEBUG
 %rng('default')
 
-delta = 5;
+delta = 5/res;
 Iterations = 25; 
 increaseIterations = 5;
 trial = 0;
@@ -124,8 +185,8 @@ while endAlgorithm == false && trial < maxTries
             j = 0;
         end
     
-        while collision == false && j < delta - 0.5
-            j = j+0.5;
+        while collision == false && j < delta - mapres
+            j = j+mapres;
             q_current = [q_near(1)+j*u(1), q_near(2)+j*u(2), q_near(3)+j*u(3)];
             if map(floor(q_current(1)), floor(q_current(2)), floor(q_current(3))) == 0 
                 collision = true;
@@ -182,6 +243,8 @@ while endAlgorithm == false && trial < maxTries
 
     figure(1)
     hold on
+
+    roadmap = roadmap*res;
     
     plot3(roadmap(1, 1), roadmap(1, 2), roadmap(1, 3), 'r.', 'MarkerSize', 15);
     hold on
@@ -210,13 +273,13 @@ while endAlgorithm == false && trial < maxTries
         
         % generate the textual path from q_i to q_f
         path = [roadmap(indexA, :)];
-        while path(1, 1) ~= q_i(1) ||  path(1, 2) ~= q_i(2) ||  path(1, 3) ~= q_i(3)
+        while path(1, 1) ~= q_i(1)*res ||  path(1, 2) ~= q_i(2)*res ||  path(1, 3) ~= q_i(3)*res
             [LIA,LOCB] = ismember(roadmap, path(1, :),'rows');
             indexPath = find(LOCB == 1);
             path = [roadmap(connections(indexPath-2, 2), :); path];
         end
         path = [path; roadmap(indexB, :)];
-        while path(end, 1) ~= q_f(1) ||  path(end, 2) ~= q_f(2) ||  path(end, 3) ~= q_f(3)
+        while path(end, 1) ~= q_f(1)*res ||  path(end, 2) ~= q_f(2)*res ||  path(end, 3) ~= q_f(3)*res
             [LIA,LOCB] = ismember(roadmap, path(end, :),'rows');
             indexPath = find(LOCB == 1);
             path = [path; roadmap(connections(indexPath-2, 2), :)];
@@ -232,6 +295,7 @@ while endAlgorithm == false && trial < maxTries
 end
 
 path(:, 3)=-path(:, 3); % Because of NED configuration
+
 
 if trial == maxTries && collision_connecting_trees == true
     disp("Too many tries, total failure!")
