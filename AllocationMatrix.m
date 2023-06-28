@@ -4,7 +4,7 @@ z_disp = -0.037;
 l = 0.215;
 b = deg2rad(20);
 
-W_des = [1; 0; -1.5*9.81; 0; 0; 0];
+W_des = [-24; 26; 9; -10; -16; 15];
 
 gamma = 0.016;
 ct = 8.54858e-6;
@@ -38,7 +38,7 @@ M_bar = [M(4:6, :); M(1:3, :)];
 
 lambda = M_bar\W_des;
 omega2 = lambda/ct;
-omega = sqrt(omega2)
+motor_velocity = sqrt(abs(omega2)).*sign(omega2);
 
 function S = skew(v)
     if(numel(v)~= 1)
