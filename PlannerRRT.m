@@ -298,6 +298,7 @@ while endAlgorithm == false && trial < maxTries
             end
         end
         path
+        path(:, 3)=-path(:, 3); % Because of NED configuration
     else
         hold off
     end
@@ -307,8 +308,6 @@ while endAlgorithm == false && trial < maxTries
         roadmap = roadmap/res;
     end
 end
-
-path(:, 3)=-path(:, 3); % Because of NED configuration
 
 
 if trial == maxTries && collision_connecting_trees == true
